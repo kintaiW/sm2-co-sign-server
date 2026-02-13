@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	DefaultAdminUsername = "adminSystem"
-	DefaultAdminPassword = "yudali2019"
+	DefaultAdminUsername = "admin"
+	DefaultAdminPassword = "please-change-password"
 )
 
 func getAdminCredentials() (username, password string) {
