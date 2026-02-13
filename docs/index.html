@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SM2 协同签名服务端 - 技术文档</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            background: linear-gradient(135deg, #00ADD8 0%, #007D9C 100%);
+            color: white;
+            padding: 60px 20px;
+            text-align: center;
+        }
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        .badges {
+            margin-top: 20px;
+        }
+        .badges img {
+            margin: 0 5px;
+        }
+        nav {
+            background: #fff;
+            padding: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        nav ul {
+            list-style: none;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        nav li {
+            margin: 0 15px;
+        }
+        nav a {
+            text-decoration: none;
+            color: #00ADD8;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        nav a:hover {
+            color: #007D9C;
+        }
+        section {
+            background: #fff;
+            margin: 20px 0;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #00ADD8;
+            border-bottom: 2px solid #00ADD8;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        h3 {
+            color: #333;
+            margin: 20px 0 10px;
+        }
+        h4 {
+            color: #007D9C;
+            margin: 15px 0 10px;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .feature-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #00ADD8;
+        }
+        .feature-card h4 {
+            color: #00ADD8;
+            margin-bottom: 10px;
+        }
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .tech-badge {
+            background: #00ADD8;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        code {
+            font-family: 'Fira Code', 'Consolas', monospace;
+        }
+        .inline-code {
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: #00ADD8;
+            color: white;
+        }
+        tr:hover {
+            background: #f5f5f5;
+        }
+        .diagram {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: monospace;
+            white-space: pre;
+            overflow-x: auto;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+        .btn {
+            display: inline-block;
+            background: #00ADD8;
+            color: white;
+            padding: 10px 25px;
+            border-radius: 25px;
+            text-decoration: none;
+            margin: 5px;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #007D9C;
+        }
+        .btn-outline {
+            background: transparent;
+            border: 2px solid #00ADD8;
+            color: #00ADD8;
+        }
+        .btn-outline:hover {
+            background: #00ADD8;
+            color: white;
+        }
+        footer {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            border-top: 1px solid #ddd;
+        }
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .info-box {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .go-keyword {
+            color: #00ADD8;
+            font-weight: bold;
+        }
+        .architecture-box {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8em;
+            }
+            section {
+                padding: 20px;
+            }
+            nav ul {
+                flex-direction: column;
+                align-items: center;
+            }
+            nav li {
+                margin: 5px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🐹 SM2 协同签名服务端</h1>
+        <p>基于 Go 语言实现的 SM2 协同签名服务端程序</p>
+        <div class="badges">
+            <img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License">
+            <img src="https://img.shields.io/badge/Go-1.24-00ADD8?logo=go" alt="Go">
+            <img src="https://img.shields.io/badge/Fiber-v2.52-00ADD8" alt="Fiber">
+            <img src="https://img.shields.io/badge/gmsm-v0.30-00ADD8" alt="gmsm">
+        </div>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="#overview">概述</a></li>
+            <li><a href="#architecture">架构设计</a></li>
+            <li><a href="#crypto">密码学实现</a></li>
+            <li><a href="#api">API 接口</a></li>
+            <li><a href="#deployment">部署指南</a></li>
+            <li><a href="#security">安全机制</a></li>
+            <li><a href="#license">许可证</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <section id="overview">
+            <h2>📋 概述</h2>
+            <p>SM2 协同签名服务端是整个协同签名系统的核心组件，负责管理服务端密钥分量、执行协同签名和解密运算。服务端与客户端协同工作，确保完整私钥永不出现。</p>
+            
+            <div class="info-box">
+                <strong>核心职责：</strong>存储服务端密钥分量 D2，响应客户端的密钥生成、签名、解密请求，记录审计日志。
+            </div>
+
+            <h3>技术栈</h3>
+            <div class="tech-stack">
+                <span class="tech-badge">Go 1.24</span>
+                <span class="tech-badge">Fiber v2.52</span>
+                <span class="tech-badge">gmsm v0.30</span>
+                <span class="tech-badge">SQLite</span>
+                <span class="tech-badge">Viper</span>
+            </div>
+
+            <h3>核心依赖</h3>
+            <table>
+                <tr>
+                    <th>依赖</th>
+                    <th>版本</th>
+                    <th>用途</th>
+                </tr>
+                <tr>
+                    <td><code>github.com/emmansun/gmsm</code></td>
+                    <td>v0.30.0</td>
+                    <td>SM2/SM3/SM4 国密算法实现</td>
+                </tr>
+                <tr>
+                    <td><code>github.com/gofiber/fiber/v2</code></td>
+                    <td>v2.52.6</td>
+                    <td>高性能 HTTP 框架</td>
+                </tr>
+                <tr>
+                    <td><code>modernc.org/sqlite</code></td>
+                    <td>v1.34.4</td>
+                    <td>纯 Go SQLite 驱动</td>
+                </tr>
+                <tr>
+                    <td><code>github.com/spf13/viper</code></td>
+                    <td>v1.19.0</td>
+                    <td>配置管理</td>
+                </tr>
+                <tr>
+                    <td><code>github.com/google/uuid</code></td>
+                    <td>v1.6.0</td>
+                    <td>UUID 生成</td>
+                </tr>
+            </table>
+        </section>
+
+        <section id="architecture">
+            <h2>🏗️ 架构设计</h2>
+            
+            <h3>目录结构</h3>
+            <div class="diagram">
+backend/
+├── cmd/
+│   └── server/
+│       └── main.go              # 服务入口
+├── internal/
+│   ├── config/
+│   │   └── config.go           # 配置管理
+│   ├── crypto/
+│   │   └── sm2_coop.go         # SM2 协同算法核心
+│   ├── handler/
+│   │   ├── cosign.go           # 协同签名处理器
+│   │   ├── user.go             # 用户处理器
+│   │   └── admin.go            # 管理处理器
+│   ├── middleware/
+│   │   └── auth.go             # 认证中间件
+│   ├── model/
+│   │   ├── user.go             # 用户模型
+│   │   ├── key.go              # 密钥模型
+│   │   ├── session.go          # 会话模型
+│   │   └── audit_log.go        # 审计日志模型
+│   ├── repository/
+│   │   ├── repository.go       # 数据库连接
+│   │   ├── user_repo.go        # 用户数据访问
+│   │   ├── key_repo.go         # 密钥数据访问
+│   │   └── audit_log_repo.go   # 审计日志数据访问
+│   └── service/
+│       ├── cosign_service.go   # 协同签名服务
+│       ├── user_service.go     # 用户服务
+│       └── admin_init.go       # 管理员初始化
+├── pkg/
+│   ├── response/
+│   │   └── response.go         # 统一响应格式
+│   └── utils/
+│       └── utils.go            # 工具函数
+├── docs/
+│   ├── api.md                  # API 文档
+│   └── api.yaml                # OpenAPI 规范
+├── scripts/
+│   └── schema.sql              # 数据库 Schema
+├── config.yaml                 # 配置文件
+├── go.mod
+└── go.sum
+            </div>
+
+            <h3>分层架构</h3>
+            <div class="architecture-box">
+                <div class="diagram">
+┌─────────────────────────────────────────────────────────────┐
+│                    HTTP Handler 层                           │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
+│  │ UserHandler │  │CosignHandler│  │AdminHandler │        │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘        │
+└─────────┼────────────────┼────────────────┼────────────────┘
+          │                │                │
+          ▼                ▼                ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Service 层                                │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
+│  │ UserService │  │CosignService│  │AdminService │        │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘        │
+└─────────┼────────────────┼────────────────┼────────────────┘
+          │                │                │
+          ▼                ▼                ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Repository 层                             │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
+│  │  UserRepo   │  │   KeyRepo   │  │ AuditLogRepo│        │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘        │
+└─────────┼────────────────┼────────────────┼────────────────┘
+          │                │                │
+          └────────────────┼────────────────┘
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    SQLite 数据库                             │
+└─────────────────────────────────────────────────────────────┘
+                </div>
+            </div>
+
+            <h3>数据模型</h3>
+            <h4>User 用户模型</h4>
+            <table>
+                <tr><th>字段</th><th>类型</th><th>描述</th></tr>
+                <tr><td>ID</td><td>string</td><td>用户唯一标识 (UUID)</td></tr>
+                <tr><td>Username</td><td>string</td><td>用户名</td></tr>
+                <tr><td>PasswordHash</td><td>string</td><td>密码哈希 (SM3)</td></tr>
+                <tr><td>PublicKey</td><td>string</td><td>协同公钥 (Base64)</td></tr>
+                <tr><td>Status</td><td>int</td><td>状态 (0=禁用, 1=启用)</td></tr>
+                <tr><td>CreatedAt</td><td>time.Time</td><td>创建时间</td></tr>
+            </table>
+
+            <h4>Key 密钥模型</h4>
+            <table>
+                <tr><th>字段</th><th>类型</th><th>描述</th></tr>
+                <tr><td>ID</td><td>string</td><td>密钥唯一标识 (UUID)</td></tr>
+                <tr><td>UserID</td><td>string</td><td>关联用户 ID</td></tr>
+                <tr><td>D2</td><td>string</td><td>服务端私钥分量 (Base64, 不对外暴露)</td></tr>
+                <tr><td>D2Inv</td><td>string</td><td>D2 的逆元 (Base64, 不对外暴露)</td></tr>
+                <tr><td>PublicKey</td><td>string</td><td>协同公钥 (Base64)</td></tr>
+                <tr><td>Status</td><td>int</td><td>状态 (0=禁用, 1=启用)</td></tr>
+            </table>
+        </section>
+
+        <section id="crypto">
+            <h2>🔐 密码学实现</h2>
+            
+            <h3>SM2 协同密钥生成</h3>
+            <p>服务端接收客户端的公钥分量 P1，生成服务端密钥分量 D2，计算协同公钥 Pa。</p>
+            
+            <div class="diagram">
+func CoopKeyGenInit(p1 []byte) (*SM2CoopKeyGenResult, error) {
+    // 1. 解析 P1 为椭圆曲线点
+    p1X := new(big.Int).SetBytes(p1[:32])
+    p1Y := new(big.Int).SetBytes(p1[32:64])
+    
+    // 2. 生成随机 d2 (服务端私钥分量)
+    d2, _ := rand.Int(rand.Reader, N)
+    
+    // 3. 计算 d2Inv = d2^(-1) mod n
+    d2Inv := new(big.Int).ModInverse(d2, N)
+    
+    // 4. 计算 P2 = d2Inv * G
+    p2X, p2Y := SM2Curve.ScalarBaseMult(d2Inv.Bytes())
+    
+    // 5. 计算 Pa = d2Inv * P1 + (n-1) * G
+    //    等价于 Pa = d2Inv * P1 - G
+    paX, paY := SM2Curve.ScalarMult(p1X, p1Y, d2Inv.Bytes())
+    minusOne := new(big.Int).Sub(N, big.NewInt(1))
+    gX, gY := SM2Curve.ScalarBaseMult(minusOne.Bytes())
+    paX, paY = SM2Curve.Add(paX, paY, gX, gY)
+    
+    return &SM2CoopKeyGenResult{D2, D2Inv, P2, Pa}, nil
+}
+            </div>
+
+            <h3>数学关系</h3>
+            <div class="info-box">
+                <strong>完整私钥：</strong>d = d1 × d2 - 1 (mod n)<br>
+                <strong>协同公钥：</strong>Pa = d2Inv × P1 - G = d × G<br>
+                <strong>验证：</strong>Pa = d2Inv × d1 × G - G = (d1 × d2Inv - 1) × G = d × G
+            </div>
+
+            <h3>SM2 协同签名</h3>
+            <div class="diagram">
+func CoopSign(d2Inv, q1, e []byte) (*SM2CoopSignResult, error) {
+    // 1. 解析 Q1 为椭圆曲线点
+    q1X := new(big.Int).SetBytes(q1[:32])
+    q1Y := new(big.Int).SetBytes(q1[32:64])
+    
+    // 2. 生成随机 k2, k3
+    k2, _ := rand.Int(rand.Reader, N)
+    k3, _ := rand.Int(rand.Reader, N)
+    
+    // 3. 计算 Q2 = k2 * G
+    q2X, q2Y := SM2Curve.ScalarBaseMult(k2.Bytes())
+    
+    // 4. 计算 x1 = k3 * Q1 + Q2
+    x1X, x1Y := SM2Curve.ScalarMult(q1X, q1Y, k3.Bytes())
+    x1X, x1Y = SM2Curve.Add(x1X, x1Y, q2X, q2Y)
+    
+    // 5. 计算 r = (e + x1) mod n
+    r := new(big.Int).SetBytes(e)
+    r.Add(r, x1X).Mod(r, N)
+    
+    // 6. 计算 s2 = d2Inv * k3 mod n
+    s2 := new(big.Int).Mul(d2InvBig, k3).Mod(r, N)
+    
+    // 7. 计算 s3 = d2Inv * (r + k2) mod n
+    s3 := new(big.Int).Mul(d2InvBig, rPlusK2).Mod(r, N)
+    
+    return &SM2CoopSignResult{R, S2, S3}, nil
+}
+            </div>
+
+            <h3>SM2 协同解密</h3>
+            <div class="diagram">
+func CoopDecrypt(d2Inv, t1 []byte) ([]byte, error) {
+    // 1. 解析 T1 为椭圆曲线点
+    t1X := new(big.Int).SetBytes(t1[:32])
+    t1Y := new(big.Int).SetBytes(t1[32:64])
+    
+    // 2. 计算 T2 = d2Inv * T1
+    t2X, t2Y := SM2Curve.ScalarMult(t1X, t1Y, d2Inv)
+    
+    // 3. 返回 T2 给客户端
+    return t2, nil
+}
+            </div>
+        </section>
+
+        <section id="api">
+            <h2>📡 API 接口</h2>
+            
+            <h3>路由配置</h3>
+            <div class="diagram">
+// 业务接口 (/api/*)
+api.Post("/register", userHandler.Register)    // 用户注册
+api.Post("/login", userHandler.Login)          // 用户登录
+api.Post("/logout", userHandler.Logout)        // 用户登出
+
+// 认证接口 (需要 Bearer Token)
+authGroup.Get("/user/info", userHandler.GetUserInfo)
+authGroup.Post("/key/init", cosignHandler.KeyInit)  // 密钥初始化
+authGroup.Post("/sign", cosignHandler.Sign)         // 协同签名
+authGroup.Post("/decrypt", cosignHandler.Decrypt)   // 协同解密
+
+// 管理接口 (/mapi/*)
+mapi.Get("/health", adminHandler.Health)
+mapi.Get("/stats", adminHandler.Stats)
+mapi.Get("/users", adminHandler.ListUsers)
+mapi.Get("/users/:id", adminHandler.GetUser)
+mapi.Delete("/users/:id", adminHandler.DeleteUser)
+mapi.Put("/users/:id/status", adminHandler.UpdateUserStatus)
+mapi.Get("/keys", adminHandler.ListKeys)
+mapi.Delete("/keys/:id", adminHandler.DeleteKey)
+mapi.Get("/logs", adminHandler.ListLogs)
+            </div>
+
+            <h3>协同签名接口</h3>
+            <h4>POST /api/sign</h4>
+            <p><strong>请求体：</strong></p>
+            <pre><code>{
+    "q1": "Base64编码的Q1 (64字节)",
+    "e": "Base64编码的消息哈希 (32字节)"
+}</code></pre>
+            <p><strong>响应：</strong></p>
+            <pre><code>{
+    "code": 0,
+    "message": "success",
+    "data": {
+        "r": "Base64编码的签名分量r",
+        "s2": "Base64编码的签名分量s2",
+        "s3": "Base64编码的签名分量s3"
+    }
+}</code></pre>
+
+            <h3>错误码定义</h3>
+            <table>
+                <tr><th>错误码</th><th>描述</th></tr>
+                <tr><td>0</td><td>成功</td></tr>
+                <tr><td>10001</td><td>用户名已存在</td></tr>
+                <tr><td>10002</td><td>用户名或密码错误</td></tr>
+                <tr><td>10003</td><td>Token 无效或已过期</td></tr>
+                <tr><td>10004</td><td>权限不足</td></tr>
+                <tr><td>10005</td><td>参数错误</td></tr>
+                <tr><td>10006</td><td>密钥生成失败</td></tr>
+                <tr><td>10007</td><td>签名失败</td></tr>
+                <tr><td>10008</td><td>解密失败</td></tr>
+            </table>
+        </section>
+
+        <section id="deployment">
+            <h2>🚀 部署指南</h2>
+            
+            <h3>配置文件 (config.yaml)</h3>
+            <pre><code># SM2 协同签名服务配置
+server:
+  port: 9002
+  read_timeout: 30s
+  write_timeout: 30s
+
+database:
+  path: ./data/cosign.db
+
+auth:
+  token_expire: 24h
+  master_key: ""
+
+log:
+  level: info
+  output: stdout
+
+admin:
+  username: ""
+  password: ""</code></pre>
+
+            <h3>启动服务</h3>
+            <pre><code># 开发模式
+go run cmd/server/main.go
+
+# 指定配置文件
+go run cmd/server/main.go /path/to/config.yaml
+
+# 编译后运行
+go build -o bin/sm2-co-sign-server ./cmd/server
+./bin/sm2-co-sign-server</code></pre>
+
+            <h3>健康检查</h3>
+            <pre><code>curl http://localhost:9002/mapi/health</code></pre>
+
+            <div class="warning-box">
+                <strong>⚠️ 安全提示：</strong>
+                <ul>
+                    <li>生产环境必须配置 HTTPS</li>
+                    <li>设置强密码的管理员账户</li>
+                    <li>配置适当的 master_key</li>
+                    <li>定期备份 SQLite 数据库</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="security">
+            <h2>🛡️ 安全机制</h2>
+            
+            <h3>密钥隔离</h3>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>🔑 D2 保护</h4>
+                    <p>服务端私钥分量 D2 和 D2Inv 存储在数据库中，不通过 API 暴露。</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🎫 Token 认证</h4>
+                    <p>使用 Bearer Token 进行身份认证，Token 有效期可配置。</p>
+                </div>
+                <div class="feature-card">
+                    <h4>📝 审计日志</h4>
+                    <p>所有关键操作（密钥生成、签名、解密）记录审计日志。</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🔒 密码哈希</h4>
+                    <p>用户密码使用 SM3 加盐哈希存储，不存储明文密码。</p>
+                </div>
+            </div>
+
+            <h3>安全流程</h3>
+            <div class="diagram">
+┌─────────────────────────────────────────────────────────────┐
+│                      安全架构                                │
+├─────────────────────────────────────────────────────────────┤
+│  客户端 (D1)              服务端 (D2)                        │
+│  ┌─────────┐              ┌─────────┐                       │
+│  │  d1     │              │  d2     │ ← 数据库加密存储       │
+│  │ (私钥分量)│              │ (私钥分量)│                       │
+│  └────┬────┘              └────┬────┘                       │
+│       │                        │                            │
+│       │    协同签名/解密        │                            │
+│       │◄──────────────────────►│                            │
+│       │                        │                            │
+│       └────────┬───────────────┘                            │
+│                ▼                                            │
+│         完整私钥 d = d1 × d2 - 1 (永不出现)                   │
+└─────────────────────────────────────────────────────────────┘
+            </div>
+        </section>
+
+        <section id="license">
+            <h2>📄 许可证</h2>
+            <p>本项目采用 <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a> 许可证。</p>
+            
+            <h3>相关链接</h3>
+            <p>
+                <a href="https://github.com/kintaiW/sm2-co-sign-server" class="btn">GitHub 仓库</a>
+                <a href="https://github.com/kintaiW/sm2-co-sign" class="btn btn-outline">主项目</a>
+                <a href="https://github.com/kintaiW/sm2-co-sign-client" class="btn btn-outline">客户端</a>
+            </p>
+        </section>
+    </div>
+
+    <footer>
+        <p>&copy; 2024-2026 SM2 Co-Sign Team. Apache License 2.0</p>
+        <p>
+            <a href="https://github.com/kintaiW/sm2-co-sign-server">GitHub</a> | 
+            <a href="https://github.com/kintaiW/sm2-co-sign-server/issues">Issues</a>
+        </p>
+    </footer>
+</body>
+</html>
