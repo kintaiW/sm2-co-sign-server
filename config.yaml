@@ -1,0 +1,21 @@
+# SM2 协同签名服务配置
+
+server:
+  port: 9002
+  read_timeout: 30s
+  write_timeout: 30s
+
+database:
+  path: ./data/cosign.db
+
+auth:
+  token_expire: 24h
+  master_key: "your-master-key-change-in-production"
+
+log:
+  level: info
+  output: stdout
+
+admin:
+  username: ""
+  password: ""

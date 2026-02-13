@@ -1,0 +1,29 @@
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Build artifacts
+bin/
+
+# Logs
+*.log
+
+# Database files
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# Environment variables
+.env
+.env.local
+
+# Configuration files with secrets
+config.local.yaml
+
+# Temporary files
+.DS_Store
+*~
+
+# Go
+vendor/

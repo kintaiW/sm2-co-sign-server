@@ -1,0 +1,651 @@
+openapi: 3.0.0
+info:
+  title: SM2 协同签名服务
+  description: 基于协同签名模式的安全密码服务系统，服务端存储密钥分量 D2，客户端持有密钥分量 D1
+  version: 1.0.0
+  contact:
+    name: 开发团队
+    email: dev@example.com
+
+servers:
+  - url: http://localhost:9002
+    description: 本地开发环境
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Response:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: 0=成功，非0=错误码
+        message:
+          type: string
+          description: 响应消息
+        data:
+          type: object
+          description: 响应数据
+
+    RegisterRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          description: 用户名
+        password:
+          type: string
+          description: 密码
+        p1:
+          type: string
+          description: 客户端生成的 P1 点（Base64 编码）
+
+    RegisterResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+          description: 用户ID
+        p2:
+          type: string
+          description: 服务端生成的 P2 点（Base64 编码）
+        pa:
+          type: string
+          description: 协同公钥 Pa（Base64 编码）
+
+    ChallengeRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          description: 用户名
+
+    ChallengeResponse:
+      type: object
+      properties:
+        challenge:
+          type: string
+          description: 挑战随机数（Base64 编码）
+
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          description: 用户名
+        password:
+          type: string
+          description: 密码
+        signature:
+          type: string
+          description: 挑战签名（Base64 编码）
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: 访问令牌
+        userId:
+          type: string
+          description: 用户ID
+        expiresAt:
+          type: string
+          format: date-time
+          description: 过期时间
+
+    KeyInitRequest:
+      type: object
+      properties:
+        p1:
+          type: string
+          description: 客户端生成的 P1 点（Base64 编码）
+
+    KeyInitResponse:
+      type: object
+      properties:
+        p2:
+          type: string
+          description: 服务端生成的 P2 点（Base64 编码）
+        pa:
+          type: string
+          description: 协同公钥 Pa（Base64 编码）
+
+    SignRequest:
+      type: object
+      properties:
+        q1:
+          type: string
+          description: 客户端生成的 Q1 点（Base64 编码）
+        e:
+          type: string
+          description: 消息哈希 E（Base64 编码）
+
+    SignResponse:
+      type: object
+      properties:
+        r:
+          type: string
+          description: 签名分量 r（Base64 编码）
+        s2:
+          type: string
+          description: 签名分量 s2（Base64 编码）
+        s3:
+          type: string
+          description: 签名分量 s3（Base64 编码）
+
+    DecryptRequest:
+      type: object
+      properties:
+        t1:
+          type: string
+          description: 客户端生成的 T1 点（Base64 编码）
+
+    DecryptResponse:
+      type: object
+      properties:
+        t2:
+          type: string
+          description: 服务端生成的 T2 点（Base64 编码）
+
+    UserInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 用户ID
+        username:
+          type: string
+          description: 用户名
+        publicKey:
+          type: string
+          description: 协同公钥 Pa
+        status:
+          type: integer
+          description: 状态：1=启用，0=禁用
+        createdAt:
+          type: string
+          format: date-time
+          description: 创建时间
+
+    UserList:
+      type: array
+      items:
+        $ref: '#/components/schemas/UserInfo'
+
+    KeyInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 密钥ID
+        userId:
+          type: string
+          description: 用户ID
+        publicKey:
+          type: string
+          description: 协同公钥 Pa
+        status:
+          type: integer
+          description: 状态：1=启用，0=禁用
+        createdAt:
+          type: string
+          format: date-time
+          description: 创建时间
+
+    KeyList:
+      type: array
+      items:
+        $ref: '#/components/schemas/KeyInfo'
+
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 日志ID
+        userId:
+          type: string
+          description: 用户ID
+        action:
+          type: string
+          description: 操作类型
+        detail:
+          type: string
+          description: 操作详情
+        ipAddress:
+          type: string
+          description: 客户端IP
+        createdAt:
+          type: string
+          format: date-time
+          description: 创建时间
+
+    AuditLogList:
+      type: array
+      items:
+        $ref: '#/components/schemas/AuditLog'
+
+    HealthCheck:
+      type: object
+      properties:
+        status:
+          type: string
+          description: 服务状态
+        timestamp:
+          type: string
+          format: date-time
+          description: 检查时间
+
+    SystemStats:
+      type: object
+      properties:
+        userCount:
+          type: integer
+          description: 用户数量
+        keyCount:
+          type: integer
+          description: 密钥数量
+        activeSessions:
+          type: integer
+          description: 活跃会话数
+        uptime:
+          type: string
+          description: 服务运行时间
+
+paths:
+  /api/register:
+    post:
+      summary: 用户注册（生成密钥对）
+      tags:
+        - 业务接口
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RegisterResponse'
+
+  /api/challenge:
+    post:
+      summary: 获取挑战随机数
+      tags:
+        - 业务接口
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChallengeRequest'
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ChallengeResponse'
+
+  /api/login:
+    post:
+      summary: 用户登录（获取 Token）
+      tags:
+        - 业务接口
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+                properties:
+                  data:
+                    $ref: '#/components/schemas/LoginResponse'
+
+  /api/logout:
+    post:
+      summary: 用户登出
+      tags:
+        - 业务接口
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 登出成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+
+  /api/key/init:
+    post:
+      summary: 初始化密钥生成（返回 P2, Pa）
+      tags:
+        - 业务接口
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KeyInitRequest'
+      responses:
+        '200':
+          description: 初始化成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RegisterResponse'
+
+  /api/key/confirm:
+    post:
+      summary: 确认密钥生成
+      tags:
+        - 业务接口
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 确认成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+
+  /api/sign:
+    post:
+      summary: 协同签名
+      tags:
+        - 业务接口
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignRequest'
+      responses:
+        '200':
+          description: 签名成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SignResponse'
+
+  /api/decrypt:
+    post:
+      summary: 协同解密
+      tags:
+        - 业务接口
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecryptRequest'
+      responses:
+        '200':
+          description: 解密成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DecryptResponse'
+
+  /api/user/info:
+    get:
+      summary: 获取当前用户信息
+      tags:
+        - 业务接口
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+                properties:
+                  data:
+                    $ref: '#/components/schemas/UserInfo'
+
+  /mapi/users:
+    get:
+      summary: 获取用户列表
+      tags:
+        - 管理接口
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+                properties:
+                  data:
+                    $ref: '#/components/schemas/UserList'
+
+  /mapi/users/{id}:
+    get:
+      summary: 获取用户详情
+      tags:
+        - 管理接口
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 用户ID
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+                properties:
+                  data:
+                    $ref: '#/components/schemas/UserInfo'
+
+    delete:
+      summary: 删除用户
+      tags:
+        - 管理接口
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 用户ID
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+
+  /mapi/users/{id}/status:
+    put:
+      summary: 更新用户状态
+      tags:
+        - 管理接口
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 用户ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: integer
+                  description: 状态：1=启用，0=禁用
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+
+  /mapi/keys:
+    get:
+      summary: 获取密钥列表
+      tags:
+        - 管理接口
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+                properties:
+                  data:
+                    $ref: '#/components/schemas/KeyList'
+
+  /mapi/keys/{id}:
+    delete:
+      summary: 删除密钥
+      tags:
+        - 管理接口
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 密钥ID
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+
+  /mapi/logs:
+    get:
+      summary: 查询审计日志
+      tags:
+        - 管理接口
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: userId
+          in: query
+          schema:
+            type: string
+          description: 用户ID（可选）
+        - name: action
+          in: query
+          schema:
+            type: string
+          description: 操作类型（可选）
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+          description: 日志数量限制
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuditLogList'
+
+  /mapi/health:
+    get:
+      summary: 健康检查
+      tags:
+        - 管理接口
+      responses:
+        '200':
+          description: 检查成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+                properties:
+                  data:
+                    $ref: '#/components/schemas/HealthCheck'
+
+  /mapi/stats:
+    get:
+      summary: 系统统计
+      tags:
+        - 管理接口
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SystemStats'
